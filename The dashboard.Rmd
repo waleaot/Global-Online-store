@@ -1,0 +1,682 @@
+---
+title: "Capstone Project"
+author: "WaleAOT"
+date: "4/8/2022"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+---
+
+
+```{r setup, include=FALSE}
+#bring in the artilleries
+library(tidyverse)
+library(tidyr)
+library(readr)
+library(dplyr)
+library(flexdashboard)
+library(stringr)
+library(plotly)
+```
+
+
+```{r}
+#bring in the datasets
+orders <- read_csv("orders.csv")
+people <- read_csv("people.csv")
+returns <- read_csv("returns.csv")
+
+```
+
+
+
+page 1
+==============================================================================
+
+Row
+------------------------------------------------------------------------------
+
+
+
+### Table of Profits per country for 2014
+
+```{r}
+orders <- orders %>% mutate(Year = str_sub(Ship_Date,-4,-1))
+
+
+highest_country <- orders %>%
+                filter(Year == "2014") %>%
+            #extract profits by country
+                   group_by(Country,Year)%>%
+   summarise(Total_profit = sum(round(Profit,digits = 4)))
+
+
+highest_country <- highest_country %>% 
+                  as.data.frame() %>% 
+#rearrange profit from highest to lowest(since we are concerned with highest                            values)
+                    arrange(desc(Total_profit))
+
+highest_country
+
+```
+Table of profit per country
+
+
+              
+```{r}
+#focusing on the top 20 countries for convenience...
+  highest_country_top_20 <- highest_country[c(1:30),]
+
+#Let ggplot order the plot by total_profit
+  highest_country_top_20$Country <- factor(highest_country_top_20$Country, 
+                                  levels =   highest_country_top_20$Country[order(highest_country_top_20$Total_profit)])
+  
+  
+```
+
+
+
+page 2
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Plots of countries by Total profit in 2014. 
+
+```{r echo=FALSE, message=FALSE, paged.print=FALSE}
+#Visualization proper
+
+q1 <- ggplot(data = highest_country_top_20, aes(x= Total_profit, y=Country, fill= Country)) +   geom_bar(stat="identity") + ggtitle(label = "Plots of countries by Total profit")+ geom_text(aes(label = round(Total_profit)),hjust = -0.1)
+ggplotly(q1)
+
+```
+
+
+
+
+From the plot, United States of America, China and India are the top 3 countries with the highest profit in the year 2014.
+
+
+Question 1b
+ For each of these three countries, find the three products with the highest total profit.
+Specifically, what are the products’ names and the total profit for each product?
+
+
+
+```{r}
+# Getting the products for the top 3 countries
+#capture product name and profit for the 3 countries
+
+Top_Country <- orders %>%
+                select(Country, Profit,Product_Name, Year) %>%
+                filter(Year == "2014" & Country %in%  c("United States",  "India" , "China"))
+head(Top_Country)
+
+```
+
+page 3
+==============================================================================
+
+Row
+------------------------------------------------------------------------------
+
+### Top 3 products in the USA with highest Total Profit
+
+```{r}
+#Get the data per country
+#for USA
+Top_Country_US <- Top_Country %>%
+                filter( Country == "United States") %>%
+                group_by(Product_Name) %>%
+                summarise(Total_profit = sum(Profit))
+
+#Convert the tibble to a dataframe, so we can rank Total_profit by desc.
+
+Top_Country_US_df <- Top_Country_US %>%
+                      as.data.frame() %>%
+                      arrange(desc(Total_profit))
+
+head(Top_Country_US_df,3)
+
+```
+
+Row
+-----------------------------------------------------------------------------
+
+### Top 3 products in India with highest Total Profit
+
+
+```{r}
+Top_Country_India <- Top_Country %>%
+                filter( Country == "India") %>%
+                group_by(Product_Name) %>%
+                summarise(Total_profit= sum(Profit))
+
+#Convert the tibble to a dataframe, so we can rank.
+
+Top_Country_India_df <- Top_Country_India %>%
+                      as.data.frame() %>%
+                      arrange(desc(Total_profit))
+
+head(Top_Country_India_df,3)
+```
+
+Row
+------------------------------------------------------------------------------
+
+### Top 3 products in China with highest Total Profit
+
+```{r}
+
+#For China
+Top_Country_China <- Top_Country %>%
+                filter( Country == "China") %>%
+                group_by(Product_Name) %>%
+                summarise(Total_profit= sum(Profit))
+
+#Convert the tibble to a dataframe, so we can rank.
+
+Top_Country_china_df <- Top_Country_China %>%
+                      as.data.frame() %>%
+                      arrange(desc(Total_profit))
+
+head(Top_Country_china_df,3)
+
+```
+
+
+
+
+page 4
+==============================================================================
+
+Row
+------------------------------------------------------------------------------
+
+### Products sub categories in the US with highest average shipping cost
+
+```{r}
+US_avg_shipping_by_category <- orders %>%
+                                select(Country, `Shipping Cost`, Sub_Category)%>%
+                                filter(Country == "United States")%>%
+                                group_by(Sub_Category) %>%
+                              summarise(cost =mean(`Shipping Cost`))
+
+
+US_avg_ship_bycat <-   US_avg_shipping_by_category %>%
+                         data.frame()%>%
+                        arrange(desc(cost))
+US_avg_ship_bycat
+```
+
+
+```{r}
+#Let's visualize
+ US_avg_ship_bycat$Sub_Category <- factor(US_avg_ship_bycat$Sub_Category, levels= US_avg_ship_bycat$Sub_Category[order(US_avg_ship_bycat$cost)])
+
+```
+
+page 5
+==============================================================================
+
+Row
+------------------------------------------------------------------------------
+
+### Products Sub categories with highest average shipping cost in the US
+
+
+```{r}
+
+US_avg_ship_bycat <- US_avg_ship_bycat %>% as.data.frame()
+```
+
+
+
+```{r}
+
+q2a <- ggplot(data = US_avg_ship_bycat, aes(y=reorder(Sub_Category, + cost), x= cost, fill = Sub_Category)) + geom_bar(stat = "identity") + ggtitle(label = "Plot of Products Sub categories with highest average shipping cost in the US") + geom_text(aes(label = round(cost)),hjust = -0.0008) + labs(x = "Cost", y = "Sub_category")
+
+#q2a +theme(axis.title.x = element_text(color = "blue", size = 14, face = "bold"))
+
+ggplotly(q2a)
+
+```
+
+
+Question 3.
+a) Assess Nigeria’s profitability (i.e., total profit) for 2014. How does it compare to other
+African countries?
+b) What factors might be responsible for Nigeria’s poor performance? You might want to
+investigate shipping costs and the average discount as potential root causes.
+
+page 6
+==============================================================================
+
+Row
+------------------------------------------------------------------------------
+
+### Table of Profit: Nigeria Vs Rest of AFrica
+
+```{r}
+naija_vs_Africa <- orders %>%
+          select(Region, Country, Profit, Discount,Year) %>%
+          filter(Region == "Africa" & Year =="2014")
+
+naija_profit <- naija_vs_Africa %>% group_by(Country) %>% summarise(Mean_profit = mean(Profit))
+
+naija_vs_Africa <- naija_vs_Africa %>% as.data.frame()%>% arrange(desc(Profit))
+
+naija_vs_Africa
+```
+
+page 7
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+###  Nigeria Vs Rest of AFrica
+
+```{r warning=FALSE}
+#Get the plot
+
+q3 <- ggplot(data = naija_profit, aes(y= reorder(Country,+Mean_profit), x = Mean_profit, fill = Country)) + geom_bar(stat= "identity")+ ggtitle(label = "Plot of profitablity across nations") +
+  geom_text(aes(label = round(Mean_profit)),hjust = -0.2)+  labs(x = "Average Profit", y = "Country")
+  
+  ggplotly(q3)
+
+```
+
+Interpretation: In Africa, on the average, Nigeria is the least profitable country.
+
+This may be due to  a lot of factors.
+
+Nigeria, Uganda and Zimbabwe should consider tuning down on the discount. They are the only countries with the highest discounts and accounting for loss.
+
+<h2>possible Factors</h2>
+Nigeria and Uganda and Zimbabwe should consider cutting down on discounts. They are the only with the highest discount and they are are the bottom of the profit table.
+
+page 8
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Country Vs Discount
+
+```{r}
+possible_fac <- naija_vs_Africa %>% #arrange(desc(Discount)) %>%
+  group_by(Country) %>% summarise(Mean_Discount = mean(Discount))
+
+possible_fac <- possible_fac %>% arrange(desc(Mean_Discount))
+
+possible_fac <- possible_fac %>% as.data.frame()
+
+possible_fac
+```
+
+Countries and discount offered
+
+page 9
+==============================================================================
+
+Row
+------------------------------------------------------------------------------
+
+### Least Profitable product sub category in Southeast Asia
+
+```{r}
+asia_list <- orders %>% select (Region, Country, Sub_Category, `Shipping Cost`, Profit) %>%
+  filter(Region == "Southeast Asia" )
+
+asia_least_profitable <- asia_list %>% as.data.frame() %>%
+                    arrange(desc(Profit))
+
+tail(asia_least_profitable,50)
+
+```
+
+The least profitable product category are Tables, Bookcases and Accessories.
+
+
+```{r}
+stop_asia <- asia_least_profitable %>%
+                filter(Sub_Category == "Tables")%>%
+               group_by(Country) %>% summarise(Avg_Profit = sum(Profit))
+
+stop_asia <- stop_asia %>% as.data.frame()
+```
+
+
+
+page 10
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Least profitable country in Southeast Asia
+
+```{r}
+q4 <- ggplot(data = stop_asia , aes(y= reorder(Country,-Avg_Profit), x = Avg_Profit, fill = Country)) + geom_bar(stat= "identity")+ ggtitle(label = "Plot of profits per country in Asia")+
+  geom_text(aes(label = round(Avg_Profit)),hjust = 1.2) + labs(x = "Average Profit", y = "Country")
+  
+ 
+ggplotly(q4)
+
+```
+
+
+
+
+-----------------------------------------------------------------------------
+
+
+
+Question 5.
+a) Which city is the least profitable (in terms of average profit) in the United States? For
+this analysis, discard the cities with less than 10 Orders.
+b) Why is this city’s average profit so low?
+
+
+
+
+```{r}
+city_usa <- orders %>%
+            filter(Country == "United States") %>%
+            select(City, Quantity, Profit)
+
+
+#least_usa_city <- city_usa %>% filter( Quantity > 9 & City == "New York City")
+
+least_usa_city <- city_usa %>% filter( Quantity > 9 )%>%
+                    group_by(City)%>%
+                    summarise(Total_Quantity = sum(Quantity),Avg_profit =   mean(Profit),  Total_pro = sum(Profit))
+
+#View(least_usa_city)
+```
+
+page 11
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Average least profitable city in the US
+
+```{r}
+least_usa_city <- least_usa_city %>% as.data.frame() %>%                  arrange(desc(Avg_profit))
+
+least_usa_city
+
+```
+
+List of profitable cities in the US, from the highest to the lowest
+
+
+```{r}
+#get the plot of the negative average profits.
+ least_usa_city_nve <- least_usa_city %>% filter( Avg_profit < 0)
+
+```
+
+page 11
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### least profitable city
+
+```{r}
+q5 <- ggplot(data = least_usa_city_nve, aes( y = reorder(City, -Avg_profit), x = Avg_profit, fill = City)) + geom_bar(stat ="identity") + ggtitle(label = "Plot of profits per city in USA") +  labs(x = "Average Profit", y = "Country")
+  
+  
+ggplotly(q5)
+
+```
+
+Concord is the least profitable city in the United States with quantity > 9.
+
+
+```{r}
+concord_reason <- orders %>%
+            filter(Country == "United States"  & Quantity >9) %>%
+            select(City, Quantity, Profit, `Shipping Cost`, Discount)%>% group_by(City) %>% summarise(Quantity = sum(Quantity),Profit = mean(Profit),`Shipping Cost` = sum(`Shipping Cost`), Discount =sum(Discount))
+
+concord_reason <- concord_reason %>% as.data.frame()%>% arrange(desc(`Shipping Cost`))
+
+concord_reason_20 <- concord_reason[c(1:10),]
+
+concord_reason_20$City  <- factor(concord_reason_20$City,                             levels = concord_reason_20$City[order(concord_reason_20$`Shipping Cost`)])
+```
+
+page 12
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Probable reason for low profit
+```{r}
+q5b <- ggplot(data = concord_reason_20, aes( y = City, x = `Shipping Cost`, fill = City)) + geom_bar(stat ="identity") + ggtitle(label = "Plot of shipping cost per city in the USA")+
+  geom_text(aes(label = round(`Shipping Cost`)),hjust = 0.000000000951)
+
+ggplotly(q5b)
+```
+
+Concord shipping cost is the 2nd highest in the cities of USA, this could be a probable cause for low profit margin.
+-- check items, stacked barchart of shipping cost and quantity.
+------------------------------------------------------------------------------
+
+
+Question 6.
+a) Which product subcategory has the highest average profit in Australia?
+
+page 13
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### product subcategory hwith the highest average profit in Australia 
+ 
+```{r}
+Aust_sub <- orders %>%  filter(Country == "Australia") %>%
+             select(Sub_Category, Profit) %>%
+              group_by(Sub_Category) %>% summarise( Avg_Profit = mean(Profit))
+
+Aust_sub <- Aust_sub %>% as.data.frame() %>% arrange(desc(Avg_Profit))
+
+
+
+Aust_sub$Sub_Category <- factor(Aust_sub$Sub_Category, levels = Aust_sub$Sub_Category[order(Aust_sub$Avg_Profit)])
+
+Aust_sub
+```
+
+page 14
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### product subcategory with the highest average profit in Australia 
+
+```{r}
+q56b <- ggplot(data = Aust_sub, aes( y = Sub_Category, x = Avg_Profit, fill = Sub_Category)) + geom_bar(stat ="identity")+ ggtitle(label = "Plot of product category per average profit in Australia")+
+  geom_text(aes(label = round(Avg_Profit)),hjust = 0.01)+ labs(x = "Average Profit", y = "Sub_category")
+
+ggplotly(q56b)
+
+```
+
+The product subcategory in Australia with the highest average profit is Appliances.
+
+
+
+Question 7.
+a)Which customer returned items and what segment do they belong
+b)Who are the most valuable customers and what do they purchase?
+
+page 15
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Customers who returned purchased items
+
+```{r}
+#extract segment, purchase, order_ID from orders table
+
+mini_table <- orders %>% select(Segment,Order_ID,Customer_Name,Customer_ID,Product_Name, Quantity)
+
+#A new table
+customer_return <- left_join(returns,mini_table, by ='Order_ID')
+
+customer_isonu <- customer_return %>% group_by(Customer_Name) %>% summarise(Segment,Quantity = sum(Quantity))
+
+customer_isonu <- customer_isonu %>% distinct() %>% arrange(desc(Quantity))
+customer_isonu %>% as.data.frame()
+
+customer_isonu
+```
+Here are the people who returned all categories of items.
+
+page 16
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Customers who returned purchased items Consumer category
+
+```{r}
+#break it down by Segment
+#unique(customer_isonu$Segment)
+
+customer_isonu_Consumer <- customer_isonu %>% filter(Segment == "Consumer")
+customer_isonu_Consumer <- customer_isonu_Consumer %>% as.data.frame()
+customer_isonu_Consumer
+```
+Customers who returned purchased items Consumer category
+
+page 17
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Customers who returned purchased items Corporate category
+
+
+```{r}
+customer_isonu_Corporate <- customer_isonu %>% filter(Segment == "Corporate")
+customer_isonu_Corporate <- customer_isonu_Corporate %>% as.data.frame()
+customer_isonu_Corporate
+```
+Customers who returned purchased items Corporate category
+
+
+page 18
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Customers who returned purchased items Home Office category
+
+
+```{r}
+customer_isonu_HO <- customer_isonu %>% filter(Segment == "Home Office")
+customer_isonu_HO <- customer_isonu_HO %>% as.data.frame()
+customer_isonu_HO
+
+```
+Customers who returned purchased items Home Office category
+
+
+```{r}
+#Lets visualize
+ new_view <- customer_isonu %>% group_by(Segment) %>% summarise(Freq = n())
+```
+
+page 19
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### returned items per category
+
+```{r}
+
+ggplot( data = new_view, aes(x= Segment, y = Freq, fill= Segment))+ geom_bar(stat="identity") + ggtitle(label = "Plot of returned goods per segment")+
+  geom_text(aes(label = round(Freq)), h=.65)+labs(x = "Segment", y = "Count of returned Items")
+
+#customer_isonu_Consumer
+#customer_isonu_Corporate
+#customer_isonu_HO
+```
+
+
+
+
+```{r}
+MVPk <- mini_table %>% group_by(Customer_ID) %>% summarise(Product_Name,Customer_Name, Quantity = sum(Quantity))
+
+MVPL <- MVPk %>% as.data.frame( ) %>% arrange(desc(Quantity))
+
+```
+Top Customers and the products they bought!
+
+page 20
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Most Valuable Customer
+
+
+```{r}
+#lets visualize customers per quantity ordered
+visualize_MVP <- MVPL %>% select(-Product_Name) %>%distinct(Customer_Name, Quantity )
+
+```
+
+
+```{r echo=FALSE, paged.print=TRUE}
+
+#subset the data
+rmvp <- visualize_MVP[c(1:30),]
+rmvp <- rmvp %>% as.data.frame( ) %>% arrange(desc(Quantity))
+
+
+q7 <- ggplot(data = rmvp, aes(y = reorder(Customer_Name, +Quantity ), x= Quantity, fill = Customer_Name)) + geom_bar(stat= "identity")+ ggtitle(label = "Plot of returned goods per segment")+
+  geom_text(aes(label = round(Quantity)),hjust = 0.012) + labs(x = "Quantity", y = "Customer Name")
+
+ggplotly(q7)
+
+
+```
+
+page 21
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### Most Valuable Customer
+
+```{r}
+MVP <- mini_table %>% group_by(Customer_ID) %>% summarise(Product_Name,Customer_Name, Quantity = sum(Quantity))
+
+MVP <- MVP %>% as.data.frame( ) %>% arrange(desc(Quantity))
+head(MVP,100)
+
+```
+Customers and what they purchased. 
+
